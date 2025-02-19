@@ -21,7 +21,7 @@
         let workletNode;
 
         // Function to start the webcam
-         async function startWebcam() {
+        async function startWebcam() {
             try {
                 const constraints = {
                     video: {
@@ -52,12 +52,7 @@
             }
         }
 
-        window.addEventListener("load", async () => {
-             await startWebcam();
-             setInterval(captureImage, 3000);
-            connect();
 
-        });
 
         function connect() {
             console.log("connecting: ", URL);
@@ -86,9 +81,11 @@
             console.log("sending setup message");
             setup_client_message = {
                 setup: {
-                    generation_config: { response_modalities: ["AUDIO"] },
-                  },
-                };
+                    generation_config: {
+                        response_modalities: ["AUDIO"]
+                    },
+                },
+            };
 
             webSocket.send(JSON.stringify(setup_client_message));
         }
@@ -125,18 +122,19 @@
             }
             setup_client_message = {
                 setup: {
-                    generation_config: { response_modalities: ["AUDIO"] },
-                  },
-                };
+                    generation_config: {
+                        response_modalities: ["AUDIO"]
+                    },
+                },
+            };
 
             webSocket.send(JSON.stringify(setup_client_message));
             payload = {
                 realtime_input: {
                     media_chunks: [{
-                            mime_type: "application/json",
-                            data: txt
-                        }
-                    ],
+                        mime_type: "application/json",
+                        data: txt
+                    }],
                 },
             };
 
@@ -148,79 +146,81 @@
             const messageData = JSON.parse(event.data);
             const response = new Response(messageData);
 
-            if(response.text){
+            if (response.text) {
                 displayMessage("GEMINI Text: " + response.text);
             }
-            if(response.json){
+            if (response.json) {
                 displayChatResponse(response.json);
             }
-            if(response.audioData){
-              injestAudioChuckToPlay(response.audioData);
+            if (response.audioData) {
+                injestAudioChuckToPlay(response.audioData);
             }
         }
 
 
-         async function initializeAudioContext() {
-          if (initialized) return;
+        async function initializeAudioContext() {
+            if (initialized) return;
 
-          audioInputContext = new (window.AudioContext ||
-          window.webkitAudioContext)({ sampleRate: 24000 });
+            audioInputContext = new(window.AudioContext ||
+                window.webkitAudioContext)({
+                sampleRate: 24000
+            });
             await audioInputContext.audioWorklet.addModule("pcm-processor.js");
             workletNode = new AudioWorkletNode(audioInputContext, "pcm-processor");
             workletNode.connect(audioInputContext.destination);
-           initialized = true;
+            initialized = true;
         }
 
 
         function base64ToArrayBuffer(base64) {
-          const binaryString = window.atob(base64);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-          }
-          return bytes.buffer;
+            const binaryString = window.atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
         }
 
         function convertPCM16LEToFloat32(pcmData) {
-           const inputArray = new Int16Array(pcmData);
-           const float32Array = new Float32Array(inputArray.length);
+            const inputArray = new Int16Array(pcmData);
+            const float32Array = new Float32Array(inputArray.length);
 
-           for (let i = 0; i < inputArray.length; i++) {
-              float32Array[i] = inputArray[i] / 32768;
-           }
+            for (let i = 0; i < inputArray.length; i++) {
+                float32Array[i] = inputArray[i] / 32768;
+            }
 
-          return float32Array;
+            return float32Array;
         }
 
 
         async function injestAudioChuckToPlay(base64AudioChunk) {
-           try {
-              if (!initialized) {
-                 await initializeAudioContext();
-              }
+            try {
+                if (!initialized) {
+                    await initializeAudioContext();
+                }
 
-              if (audioInputContext.state === "suspended") {
-                 await audioInputContext.resume();
-              }
-              const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
-             const float32Data = convertPCM16LEToFloat32(arrayBuffer);
+                if (audioInputContext.state === "suspended") {
+                    await audioInputContext.resume();
+                }
+                const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
+                const float32Data = convertPCM16LEToFloat32(arrayBuffer);
 
-             workletNode.port.postMessage(float32Data);
+                workletNode.port.postMessage(float32Data);
             } catch (error) {
-               console.error("Error processing audio chunk:", error);
+                console.error("Error processing audio chunk:", error);
             }
         }
 
         function uint8ArrayToString(uint8Array, chunkSize = 1024) {
-          let str = '';
-          for (let i = 0; i < uint8Array.length; i += chunkSize) {
-            const chunk = uint8Array.subarray(i, i + chunkSize);
-            str += String.fromCharCode.apply(null, chunk);
-          }
-          return str;
+            let str = '';
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                const chunk = uint8Array.subarray(i, i + chunkSize);
+                str += String.fromCharCode.apply(null, chunk);
+            }
+            return str;
         }
 
-       function recordChunk() {
+        function recordChunk() {
             const buffer = new ArrayBuffer(pcmData.length * 2);
             const view = new DataView(buffer);
             pcmData.forEach((value, index) => {
@@ -230,13 +230,13 @@
             const str = uint8ArrayToString(int8Buffer);
             const base64 = btoa(str);
 
-           sendVoiceMessage(base64);
-          pcmData = [];
+            sendVoiceMessage(base64);
+            pcmData = [];
         }
 
-         function toggleAudio() {
+        function toggleAudio() {
 
-            if(!isListening){
+            if (!isListening) {
                 startAudioInput();
             } else {
                 stopAudioInput();
@@ -261,7 +261,7 @@
 
             processor.onaudioprocess = (e) => {
                 const inputData = e.inputBuffer.getChannelData(0);
-                 const pcm16 = new Int16Array(inputData.length);
+                const pcm16 = new Int16Array(inputData.length);
                 for (let i = 0; i < inputData.length; i++) {
                     pcm16[i] = inputData[i] * 0x7fff;
                 }
@@ -275,75 +275,93 @@
         }
 
         function stopAudioInput() {
-           if(processor) {
+            if (processor) {
                 processor.disconnect();
             }
-            if(audioContext) {
-               audioContext.close();
+            if (audioContext) {
+                audioContext.close();
             }
 
-           clearInterval(interval);
+            clearInterval(interval);
         }
 
         function displayChatResponse(message) {
             console.log(message);
             const textarea = document.getElementById('myTextarea');
             // Append the text to the textarea
-            textarea.innerHTML += message;// Adding a newline character
+            textarea.innerHTML += message; // Adding a newline character
         }
 
         function displayMessage(message) {
-           console.log(message);
+            console.log(message);
             addParagraphToDiv("chatLog", message);
         }
 
 
         function addParagraphToDiv(divId, text) {
-           const newParagraph = document.createElement("p");
-           newParagraph.textContent = text;
-           const div = document.getElementById(divId);
-           div.appendChild(newParagraph);
+            const newParagraph = document.createElement("p");
+            newParagraph.textContent = text;
+            const div = document.getElementById(divId);
+            div.appendChild(newParagraph);
         }
 
-        startButton.addEventListener('click', toggleAudio);
-        startButton.addEventListener("click", function () {
-            startButton.classList.toggle("listening");
-        });
-        videoButton.addEventListener("click", function () {
-            videoButton.classList.toggle("listening");
-        });
 
         class Response {
             constructor(data) {
-               this.text = null;
-               this.json = null;
-               this.audioData = null;
+                this.text = null;
+                this.json = null;
+                this.audioData = null;
                 this.endOfTurn = null;
 
-               if(data.text){
-                  this.text = data.text
-               }
-               if(data.json){
-                                 this.json = data.json
-                              }
+                if (data.text) {
+                    this.text = data.text
+                }
+                if (data.json) {
+                    this.json = data.json
+                }
 
                 if (data.audio) {
-                   this.audioData = data.audio;
+                    this.audioData = data.audio;
                 }
             }
-         }
+        }
 
+        window.addEventListener("load", async () => {
+                    connect();
 
-document.getElementById('myInput').addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent default behavior of the enter key
+                });
+                startButton.addEventListener('click', toggleAudio);
+                startButton.addEventListener("click", function() {
+                    startButton.classList.toggle("listening");
+                });
+                videoButton.addEventListener("click", function() {
+                    videoButton.classList.toggle("listening");
+                    if (!isListening) {
+                        startAudioInput();
+                        const videoElement = document.getElementById('videoElement');
+                        videoElement.autoplay = true;
+                        videoElement.load();
+                        startWebcam();
+                        setInterval(captureImage, 3000);
+                    } else {
+                        stopAudioInput();
+                        const videoElement = document.getElementById('videoElement');
+                        videoElement.autoplay = false;
+                        videoElement.load();
+                    }
+                    isListening = !isListening;
+                });
 
-        const inputText = this.value;
-        const textarea = document.getElementById('myTextarea');
+                document.getElementById('myInput').addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault(); // Prevent default behavior of the enter key
 
-        // Append the text to the textarea
-        textarea.innerHTML  += "<div class=\"queryTextClass\">Query: " + inputText + "<br>" +"</div>";
-        sendTextMessage(this.value)
-        this.value = ''; // Clear the input field
-    }
-});
+                        const inputText = this.value;
+                        const textarea = document.getElementById('myTextarea');
+
+                        // Append the text to the textarea
+                        textarea.innerHTML += "<div class=\"queryTextClass\">Query: " + inputText + "<br>" + "</div>";
+                        sendTextMessage(this.value)
+                        this.value = ''; // Clear the input field
+                    }
+                });
