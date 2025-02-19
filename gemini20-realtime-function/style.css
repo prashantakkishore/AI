@@ -1,0 +1,137 @@
+body {
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f4f4f4;
+    margin: 0;
+}
+
+#videoElement {
+            width: 320px;
+            height: 240px;
+            border-radius: 20px;
+        }
+
+        #canvasElement {
+            display: none;
+        }
+
+        .demo-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+        }
+
+        .button-group {
+
+            margin-bottom: 20px;
+            margin-top: 50px;
+            display: flex;
+            gap: 10px;
+            flex-direction: row;
+            align-items: center;
+            border-radius: 25px;
+            border: 2px solid #AEA5A5;
+            padding: 15px;
+        }
+        .mic {
+          position: relative;
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          width: 40px;
+          height: 40px;
+          background-color: gray;
+          color: #fff;
+          font-size: 13px;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: background-color 0.25s;
+        }
+
+        .mic::before {
+          content: "";
+          position: absolute;
+          width: inherit;
+          height: inherit;
+          border-radius: inherit;
+          background-color: inherit;
+          z-index: -1;
+        }
+
+        .listening {
+          background-color: red;
+        }
+        .listening::before {
+          animation: listening 1.3s infinite;
+        }
+
+        @keyframes listening {
+          from {
+            opacity: 0.25;
+          }
+          to {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+
+.textarea-container {
+    margin-bottom: 20px;
+    position: relative;
+    width: 600px;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+
+}
+
+#myTextarea {
+    width: 100%;
+    height: 100%;
+    padding: 15px;
+    box-sizing: border-box;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.4;
+    background-color: #f0f0f0; /* light gray background */
+    color: #555;  /* gray text */
+    
+}
+
+.queryTextClass {
+
+    box-sizing: border-box;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+
+}
+
+.textbox {
+    position: absolute;
+    bottom: -50px;
+    left: 2px;
+    width: calc(100% - 5px);
+    height: 50px;
+    background-color: #fff;
+    padding: 10px 15px;
+    box-sizing: border-box;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+    line-height: 1.4;
+    outline: none; /* remove default focus outline */
+     transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.textbox:focus {
+    border-color: #007bff; /* blue when focused */
+    box-shadow: 0 0 5px rgba(0,123,255,0.3); /* add a focus glow */
+}

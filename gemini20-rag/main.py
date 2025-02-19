@@ -20,7 +20,7 @@ from llama_index.embeddings.gemini import GeminiEmbedding
 from llama_index.llms.gemini import Gemini
      
 # Load API key from environment
-os.environ['GOOGLE_API_KEY'] = 'AIzaSyDQgqiHv3eUxNk-mMwXuXQi3Cv4MwhYstY'
+# os.environ['GOOGLE_API_KEY'] = ''
 gemini_api_key = os.environ['GOOGLE_API_KEY']
 MODEL = "gemini-2.0-flash-exp"  # use your model ID
 
