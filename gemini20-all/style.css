@@ -9,8 +9,8 @@ body {
 }
 
 #videoElement {
-	width: 320px;
 	border-radius: 6px;
+	height:450px;
 }
 
 #canvasElement {

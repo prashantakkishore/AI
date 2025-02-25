@@ -39,10 +39,10 @@ async def gemini_session_handler(client_websocket: websockets.WebSocketServerPro
                           if "realtime_input" in data:
                               for chunk in data["realtime_input"]["media_chunks"]:
                                   if chunk["mime_type"] == "audio/pcm":
-                                      await session.send({"mime_type": "audio/pcm", "data": chunk["data"]})
+                                      await session.send(input ={"mime_type": "audio/pcm", "data": chunk["data"]})
                                       
                                   elif chunk["mime_type"] == "image/jpeg":
-                                      await session.send({"mime_type": "image/jpeg", "data": chunk["data"]})
+                                      await session.send(input ={"mime_type": "image/jpeg", "data": chunk["data"]})
                                       
                       except Exception as e:
                           print(f"Error sending to Gemini: {e}")

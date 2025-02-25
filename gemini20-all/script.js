@@ -4,9 +4,12 @@
         const context = canvas.getContext("2d");
         const startButton = document.getElementById('startButton');
         const videoButton = document.getElementById('videoButton');
+        const screenShareButton = document.getElementById('screenShareButton');
 
 
         let isListening = false;
+        let sharingScreen = false;
+        let isVideoOn = false;
 
         let stream = null;
         let currentFrameB64;
@@ -227,11 +230,44 @@
                 view.setInt16(index * 2, value, true);
             });
             const int8Buffer = new Uint8Array(buffer);
-            const str = uint8ArrayToString(int8Buffer);
-            const base64 = btoa(str);
 
+            // Convert Uint8Array to a binary string. Crucial step!
+            let binary = '';
+            const len = int8Buffer.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(int8Buffer[i]);
+            }
+
+            const base64 = btoa(binary);  // Now correctly base64 encodes the binary data.
             sendVoiceMessage(base64);
             pcmData = [];
+        }
+
+        // Function to start screen capture
+        async function startScreenShare() {
+            try {
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        width: {
+                            max: 640
+                        },
+                        height: {
+                            max: 480
+                        },
+                    },
+                });
+
+                video.srcObject = stream;
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        console.log("video loaded metadata");
+                        resolve();
+                    }
+                });
+
+            } catch (err) {
+                console.error("Error accessing the screen: ", err);
+            }
         }
 
         function toggleAudio() {
@@ -327,41 +363,50 @@
         }
 
         window.addEventListener("load", async () => {
-                    connect();
+            connect();
+        });
+        screenShareButton.addEventListener("click", async () => {
+            screenShareButton.classList.toggle("listening");
+            if(!sharingScreen) {
+                await startScreenShare();
+                setInterval(captureImage, 3000);
+            } else {
+                const videoElement = document.getElementById('videoElement');
+                                videoElement.autoplay = false;
+                                videoElement.load();
+            }
+            sharingScreen = !sharingScreen;
+        });
+        startButton.addEventListener('click', toggleAudio);
+        startButton.addEventListener("click", function() {
+            startButton.classList.toggle("listening");
+        });
+        videoButton.addEventListener("click", function() {
+            videoButton.classList.toggle("listening");
+            if (!isVideoOn) {
+                const videoElement = document.getElementById('videoElement');
+                videoElement.autoplay = true;
+                videoElement.load();
+                startWebcam();
+                setInterval(captureImage, 3000);
+            } else {
+                const videoElement = document.getElementById('videoElement');
+                videoElement.autoplay = false;
+                videoElement.load();
+            }
+            isVideoOn = !isVideoOn;
+        });
 
-                });
-                startButton.addEventListener('click', toggleAudio);
-                startButton.addEventListener("click", function() {
-                    startButton.classList.toggle("listening");
-                });
-                videoButton.addEventListener("click", function() {
-                    videoButton.classList.toggle("listening");
-                    if (!isListening) {
-                        startAudioInput();
-                        const videoElement = document.getElementById('videoElement');
-                        videoElement.autoplay = true;
-                        videoElement.load();
-                        startWebcam();
-                        setInterval(captureImage, 3000);
-                    } else {
-                        stopAudioInput();
-                        const videoElement = document.getElementById('videoElement');
-                        videoElement.autoplay = false;
-                        videoElement.load();
-                    }
-                    isListening = !isListening;
-                });
+        document.getElementById('myInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent default behavior of the enter key
 
-                document.getElementById('myInput').addEventListener('keydown', function(event) {
-                    if (event.key === 'Enter') {
-                        event.preventDefault(); // Prevent default behavior of the enter key
+                const inputText = this.value;
+                const textarea = document.getElementById('myTextarea');
 
-                        const inputText = this.value;
-                        const textarea = document.getElementById('myTextarea');
-
-                        // Append the text to the textarea
-                        textarea.innerHTML += "<div class=\"queryTextClass\">Query: " + inputText + "<br>" + "</div>";
-                        sendTextMessage(this.value)
-                        this.value = ''; // Clear the input field
-                    }
-                });
+                // Append the text to the textarea
+                textarea.innerHTML += "<div class=\"queryTextClass\">Query: " + inputText + "<br>" + "</div>";
+                sendTextMessage(this.value)
+                this.value = ''; // Clear the input field
+            }
+        });
