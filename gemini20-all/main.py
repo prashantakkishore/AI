@@ -1,3 +1,4 @@
+# main.py
 # pip install google-genai==0.3.0
 
 import asyncio
@@ -8,7 +9,8 @@ import markdown
 import websockets
 from google import genai
 import chromavectordb as cvd
-import tools
+import Tools as tools
+from ToolHandler import ToolHandler
 
 # Load API key from environment
 # os.environ['GOOGLE_API_KEY'] = ''
@@ -32,7 +34,11 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
         config_data = json.loads(config_message)
         config = config_data.get("setup", {})
 
+        available_tools = tools  # Access the tools module
         config["tools"] = [tools.write_to_diary_tool, tools.find_in_diary_tool, tools.exchange_rate_tool]
+
+        tools_handler = ToolHandler(available_tools, client_websocket)
+
 
         async with client.aio.live.connect(model=MODEL, config=config) as session:
             print("Connected to Gemini API")
@@ -58,10 +64,7 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                             response = chat.send_message_stream(chunk["data"])
                                             cvd.update_embeddings_new_text(chunk["data"])
                                             for chat_response_chunk in response:
-                                                html_content = markdown.markdown(chat_response_chunk.text)
-                                                html_content = re.sub(r"^<p>", " ", html_content)
-                                                html_content = re.sub(r"</p>$", " ", html_content)
-                                                await client_websocket.send(json.dumps({"json": html_content}))
+                                                await client_websocket.send(json.dumps({"json": chat_response_chunk.text}))
 
                         except Exception as client_closed:
                             print(f"Error sending to Gemini send_to_gemini: {client_closed}")
@@ -90,68 +93,7 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                         print(f"Tool call received: {response.tool_call}")
 
                                         function_calls = response.tool_call.function_calls
-                                        function_responses = []
-
-                                        for function_call in function_calls:
-                                            name = function_call.name
-                                            args = function_call.args
-                                            # Extract the numeric part from Gemini's function call ID
-                                            call_id = function_call.id
-                                            # Validate function name
-                                            if name == "find_in_diary":
-                                                try:
-                                                    result = tools.find_in_diary(args["query"])
-                                                    function_responses.append(
-                                                        {
-                                                            "name": name,
-                                                            "response": {"result": result},
-                                                            "id": call_id
-                                                        }
-                                                    )
-                                                    await client_websocket.send(
-                                                        json.dumps({"text": json.dumps(function_responses)}))
-                                                    print("find_in_diary function executed")
-                                                except Exception as e:
-                                                    print(f"Error executing function: {e}")
-                                                    continue
-                                            # Validate function name
-                                            if name == "write_to_diary":
-                                                try:
-                                                    result = tools.write_to_diary(args["notes"])
-                                                    function_responses.append(
-                                                        {
-                                                            "name": name,
-                                                            "response": {"result": result},
-                                                            "id": call_id
-                                                        }
-                                                    )
-                                                    await client_websocket.send(
-                                                        json.dumps({"text": json.dumps(function_responses)}))
-                                                    print("write_to_diary function executed")
-                                                except Exception as e:
-                                                    print(f"Error executing function: {e}")
-                                                    continue
-
-                                            # Validate function name
-                                            if name == "get_exchange_rate":
-                                                try:
-                                                    result = tools.get_exchange_rate(args["currency_from"],
-                                                                                     args["currency_to"],
-                                                                                     args["currency_date"])
-                                                    function_responses.append(
-                                                        {
-                                                            "name": name,
-                                                            # "response": {"result": "The light is broken."},
-                                                            "response": {"result": result},
-                                                            "id": call_id
-                                                        }
-                                                    )
-                                                    await client_websocket.send(
-                                                        json.dumps({"text": json.dumps(function_responses)}))
-                                                    print("Function executed")
-                                                except Exception as e:
-                                                    print(f"Error executing function: {e}")
-                                                    continue
+                                        function_responses = await tools_handler.process_tool_calls(function_calls)
 
                                         # Send function response back to Gemini
                                         print(f"function_responses: {function_responses}")
@@ -178,6 +120,9 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                             }))
 
                                 if response.server_content.turn_complete:
+                                    await client_websocket.send(json.dumps({
+                                        "serverContent": {"turnComplete": True},
+                                    }))
                                     print('\n<Turn complete>')
                         except websockets.exceptions.ConnectionClosedOK:
                             print("Client connection closed normally (receive)")

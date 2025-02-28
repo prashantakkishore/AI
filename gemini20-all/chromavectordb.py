@@ -6,16 +6,17 @@ import google.generativeai as genai
 from pypdf import PdfReader
 import embeddingfunctions as ef
 from decorators import decorator_time_taken
-
+from datetime import datetime
+import util
 
 # load_pdf -> split_text -> create_chroma_db -> load_chroma_collection -> get_relevant_passage (user query in same
 # embeddings) ->  make_rag_prompt -> generate_answer
 
 @decorator_time_taken
-def generate_answer_user(query="what is my daughter's name"):
+def generate_answer_user(date, query="what is my daughter's name"):
     db = load_chroma_collection(path="./storage",  # replace with path of your persistent directory
                                 name="daily_dairy")  # replace with the collection name
-    answer = generate_answer(db, query=query)
+    answer = generate_answer(date, db, query=query)
     if answer is None:
         return "Nothing Found"
     else:
@@ -24,9 +25,9 @@ def generate_answer_user(query="what is my daughter's name"):
 
 
 @decorator_time_taken
-def generate_answer(db, query):
+def generate_answer(date, collection, query):
     # retrieve top 3 relevant text chunks
-    relevant_text = get_relevant_passage(query, db, n_results=1000)
+    relevant_text = get_relevant_passage(date, query, collection, n_results=1000)
     prompt = make_rag_prompt(query,
                              relevant_passage="".join(
                                  relevant_text))  # joining the relevant chunks to create a single passage
@@ -59,8 +60,22 @@ def make_rag_prompt(query, relevant_passage):
     return prompt
 
 
-def get_relevant_passage(query, db, n_results):
-    passage = db.query(query_texts=[query], n_results=n_results)['documents'][0]
+def get_relevant_passage(date, query, collection, n_results):
+    if date:
+        real_date = util.fuzzy_date_to_date(date) # converts today, tomorrow to real date
+        if real_date:
+            return get_relevant_passage_timestamp(real_date, query, collection, n_results)
+    passage = collection.query(query_texts=[query], n_results=n_results)['documents'][0]
+    return passage
+
+
+def get_relevant_passage_timestamp(date, query, collection, n_results):
+    passage = collection.query(
+        query_texts=[query],
+        where={"timestamp": int(date.timestamp())}
+    )
+
+    # passage = collection.query(query_texts=[query], n_results=n_results)['documents'][0]
     return passage
 
 
@@ -76,9 +91,9 @@ def load_chroma_collection(path, name):
     - chromadb.Collection: The loaded Chroma Collection.
     """
     chroma_client = chromadb.PersistentClient(path=path)
-    db = chroma_client.get_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
+    collection = chroma_client.get_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
 
-    return db
+    return collection
 
 
 def create_chroma_db(documents: List, path: str, name: str):
@@ -96,10 +111,13 @@ def create_chroma_db(documents: List, path: str, name: str):
     chroma_client = chromadb.PersistentClient(path=path)
     collection = chroma_client.get_or_create_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
     # collection = chroma_client.create_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
-    total_documents = collection.count()
-    for i, d in enumerate(documents):
-        collection.add(documents=d, ids=str(total_documents))
-        total_documents += total_documents
+    timestamp = int(datetime.now().timestamp())  # Convert to Unix timestamp for efficient storage
+    collection.add(
+        documents=documents,
+        metadatas=[{"timestamp": timestamp, "user_id": ""}],  # add user later
+        ids=[str(timestamp)]  # Using timestamp as ID for simplicity
+    )
+
     return collection, name
 
 
