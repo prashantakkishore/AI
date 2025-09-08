@@ -12,47 +12,48 @@
 </head>
 
 <body>
-    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
-        <header class="mdl-layout__header">
-            <div class="mdl-layout__header-row">
-                <!-- Title -->
-                <span class="mdl-layout-title">Gemini Live Demo</span>
-            </div>
-        </header>
-        <main class="mdl-layout__content">
-            <div class="page-content">
-                <!-- Voice Control Buttons -->
-                <div class="button-group">
-                    <button id="startButton" type="button" class="mic">
-                        <i class="fa fa-microphone"></i>
-                    </button>
-                    <button id="videoButton" type="button" class="mic">
-                        <i class="fa fa-video"></i>
-                    </button>
-                    <button id="screenShareButton" type="button" class="mic">
-                        <i class="fas fa-share-square"></i>
-                    </button>
-                    <button id="chatButton" type="button" class="mic">
-                        <i class="far fa-comment"></i>
-                    </button>
-                </div>
-                <div class="flex-row">
-                    <div class="flex-column chat-container">
-                            <code id="myTextarea" class="chat-column"></code>
-                            <input type="text" id="myInput" class="textbox" placeholder="Enter your text here...">
-                    </div>
-                    <!-- Video Element -->
-                    <div class="flex-column"> <video id="videoElement" autoplay></video></div>
-                    <!-- Text Output -->
-                    <div id="chatLog"  class="flex-column"></div>
-                    <!-- Hidden Canvas -->
-                    <div class="flex-column"><canvas id="canvasElement"></canvas></div>
+<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
 
-                </div>
+        <div class="mdl-layout__header-row">
+            <!-- Title -->
+            <span class="mdl-layout-title">RAG Using Gemini Multimodel</span>
+        </div>
 
+    <main class="mdl-layout__content">
+        <div class="page-content">
+            <!-- Voice Control Buttons -->
+            <div class="button-group">
+                <button id="startButton" type="button" class="mic">
+                    <i class="fa fa-microphone"></i>
+                </button>
+                <button id="videoButton" type="button" class="mic">
+                    <i class="fa fa-video"></i>
+                </button>
+                <button id="screenShareButton" type="button" class="mic">
+                    <i class="fas fa-share-square"></i>
+                </button>
+                <button id="chatButton" type="button" class="mic">
+                    <i class="far fa-comment"></i>
+                </button>
             </div>
-        </main>
-    </div>
+            <div class="flex-row">
+                <div class="flex-column chat-container">
+                    <code id="myTextarea" class="chat-column"></code>
+                    <input type="text" id="myInput" class="textbox" placeholder="Enter your text here...">
+                </div>
+                <div class="architecture-image">
+                <!-- Video Element -->
+                <div class="flex-column"> <video id="videoElement" autoplay></video></div>
+                <!-- Text Output -->
+                <div id="chatLog" class="flex-column"></div>
+                <!-- Hidden Canvas -->
+                <div class="flex-column"><canvas id="canvasElement"></canvas></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
 
 </body>
 

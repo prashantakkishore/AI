@@ -1,10 +1,14 @@
-
 from datetime import datetime
 import datetime
 import re
 
 
 def fuzzy_date_to_date(fuzzy_date_string):
+    dt = fuzzy_datetime_to_datetime(fuzzy_date_string)
+    return dt.date().isoformat() if dt else dt
+
+
+def fuzzy_datetime_to_datetime(fuzzy_date_string):
     """
     Converts fuzzy date strings like "today", "tomorrow", "yesterday", "day before yesterday" to exact datetime objects.
 
