@@ -4,12 +4,10 @@ import Tools as tool
 
 
 class ToolHandler:
-    """Handles tool calls from the Gemini API and returns responses."""
-    tools = tool
 
     def __init__(self, tools, client_websocket):
         """Initializes the ToolsHandler with the available tools and websocket client."""
-        self.tools = tools
+        self.tools = tool.Tools()
         self.client_websocket = client_websocket
         self.tool_functions = {
             "find_in_diary": self.execute_find_in_diary,

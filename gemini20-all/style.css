@@ -10,7 +10,7 @@ body {
 
 #videoElement {
 	border-radius: 6px;
-	height:450px;
+	height: 450px;
 }
 
 #canvasElement {
@@ -90,6 +90,11 @@ body {
 .chat-container {
 	border: 2px solid #ddd;
 	border-radius: 8px;
+  /* position: relative;  Added this */
+    display: flex; /*Added this */
+    flex-direction: column; /*Added this */
+	width: 25%; /* Ensure chat container has a defined width */
+    min-width: 200px; /* Minimum width to prevent collapse */
 }
 
 .chat-column {
@@ -97,6 +102,22 @@ body {
 	overflow: auto;
 	display: block;
 	padding: 5px;
+    flex-grow: 1; /*Added this */
+}
+.mdl-layout__header-row{
+  min-height: 20px; //change this value for height
+  height: 20px;
+  background-color: #FFD580; // change this for color
+  padding-left: 25px !important;
+}
+.architecture-image {
+
+    width:670px; /*width of your image*/
+   height:542px; /*height of your image*/
+   background-image:url('gemini_all_architecture (4).jpg');
+   margin:0; /* If you want no margin */
+   padding:0; /*if your want to padding */
+
 }
 
 .queryTextClass {
@@ -108,7 +129,8 @@ body {
 }
 
 .textbox {
-	position: absolute;
+	/*position: absolute;  Modified This */
+    bottom: 0; /*Modified This */
 	margin: 1px;
 	width: 100%;
 	height: 50px;
@@ -130,3 +152,80 @@ body {
 	box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
 	/* add a focus glow */
 }
+
+/* Important: Fix the position and prevent wrapping */
+.flex-row {
+    padding: 20px;
+    display: flex;
+    /* flex-wrap: wrap; Remove wrap to prevent elements from shifting */
+}
+
+.highlight pre {
+  background-color: #f0f0f0; /* Light gray background */
+  padding: 10px;
+  overflow: auto; /* Add scrollbars if code overflows */
+}
+
+.highlight .c { color: #999988; font-style: italic } /* Comment */
+.highlight .err { color: #a61717; background-color: #e3d2d2 } /* Error */
+.highlight .g { color: #d0d0d0 } /* Generic */
+.highlight .k { color: #000000; font-weight: bold } /* Keyword */
+.highlight .o { color: #000000; font-weight: bold } /* Operator */
+.highlight .p { color: #000000; font-weight: bold } /* Punctuation */
+.highlight .cm { color: #999988; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #999999; font-weight: bold } /* Comment.Preproc */
+.highlight .c1 { color: #999988; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #999999; font-weight: bold; font-style: italic } /* Comment.Special */
+.highlight .gd { color: #000000; background-color: #ffdddd } /* Generic.Deleted */
+.highlight .ge { color: #000000; font-style: italic } /* Generic.Emph */
+.highlight .gr { color: #aa0000 } /* Generic.Error */
+.highlight .gh { color: #999999 } /* Generic.Heading */
+.highlight .gi { color: #000000; background-color: #ddffdd } /* Generic.Inserted */
+.highlight .go { color: #888888 } /* Generic.Output */
+.highlight .gp { color: #555555 } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #aaaaaa } /* Generic.Subheading */
+.highlight .gt { color: #aa0000 } /* Generic.Traceback */
+.highlight .kc { color: #000000; font-weight: bold } /* Keyword.Constant */
+.highlight .kd { color: #000000; font-weight: bold } /* Keyword.Declaration */
+.highlight .kn { color: #000000; font-weight: bold } /* Keyword.Namespace */
+.highlight .kp { color: #000000; font-weight: bold } /* Keyword.Pseudo */
+.highlight .kr { color: #000000; font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #445588; font-weight: bold } /* Keyword.Type */
+.highlight .m { color: #009999 } /* Literal.Number */
+.highlight .s { color: #dd4422 } /* Literal.String */
+.highlight .na { color: #008080 } /* Name.Attribute */
+.highlight .nb { color: #0086B3 } /* Name.Builtin */
+.highlight .nc { color: #445588; font-weight: bold } /* Name.Class */
+.highlight .no { color: #008080 } /* Name.Constant */
+.highlight .nd { color: #3c5d5d; font-weight: bold } /* Name.Decorator */
+.highlight .ni { color: #800080 } /* Name.Entity */
+.highlight .ne { color: #990000; font-weight: bold } /* Name.Exception */
+.highlight .nf { color: #990000; font-weight: bold } /* Name.Function */
+.highlight .nl { color: #990000; font-weight: bold } /* Name.Label */
+.highlight .nn { color: #555555 } /* Name.Namespace */
+.highlight .nt { color: #000080 } /* Name.Tag */
+.highlight .nv { color: #008080 } /* Name.Variable */
+.highlight .ow { color: #000000; font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mb { color: #009999 } /* Literal.Number.Bin */
+.highlight .mf { color: #009999 } /* Literal.Number.Float */
+.highlight .mh { color: #009999 } /* Literal.Number.Hex */
+.highlight .mi { color: #009999 } /* Literal.Number.Integer */
+.highlight .mo { color: #009999 } /* Literal.Number.Oct */
+.highlight .sb { color: #dd4422 } /* Literal.String.Backtick */
+.highlight .sc { color: #dd4422 } /* Literal.String.Char */
+.highlight .sd { color: #dd4422 } /* Literal.String.Doc */
+.highlight .s2 { color: #dd4422 } /* Literal.String.Double */
+.highlight .se { color: #dd4422 } /* Literal.String.Escape */
+.highlight .sh { color: #dd4422 } /* Literal.String.Heredoc */
+.highlight .si { color: #dd4422 } /* Literal.String.Interpol */
+.highlight .sx { color: #dd4422 } /* Literal.String.Other */
+.highlight .sr { color: #009926 } /* Literal.String.Regex */
+.highlight .s1 { color: #dd4422 } /* Literal.String.Single */
+.highlight .ss { color: #990073 } /* Literal.String.Symbol */
+.highlight .bp { color: #999999 } /* Name.Builtin.Pseudo */
+.highlight .vc { color: #008080 } /* Name.Variable.Class */
+.highlight .vg { color: #008080 } /* Name.Variable.Global */
+.highlight .vi { color: #008080 } /* Name.Variable.Instance */
+.highlight .il { color: #009999 } /* Literal.Number.Integer.Long */

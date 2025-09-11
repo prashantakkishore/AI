@@ -6,8 +6,9 @@ import google.generativeai as genai
 from pypdf import PdfReader
 import embeddingfunctions as ef
 from decorators import decorator_time_taken
-from datetime import datetime
+import datetime
 import util
+
 
 # load_pdf -> split_text -> create_chroma_db -> load_chroma_collection -> get_relevant_passage (user query in same
 # embeddings) ->  make_rag_prompt -> generate_answer
@@ -62,21 +63,52 @@ def make_rag_prompt(query, relevant_passage):
 
 def get_relevant_passage(date, query, collection, n_results):
     if date:
-        real_date = util.fuzzy_date_to_date(date) # converts today, tomorrow to real date
+        real_date = util.fuzzy_date_to_date(date)  # converts today, tomorrow to real date
         if real_date:
             return get_relevant_passage_timestamp(real_date, query, collection, n_results)
-    passage = collection.query(query_texts=[query], n_results=n_results)['documents'][0]
+
+    results = collection.query(query_texts=[query], n_results=n_results, where={"date": ""})
+    if results and 'documents' in results and results['documents']:
+        passage = results['documents'][0]
+    else:
+        passage = []
+
+    print(f"Getting all data as no date is given passage {passage}")
     return passage
 
 
 def get_relevant_passage_timestamp(date, query, collection, n_results):
-    passage = collection.query(
+    """Retrieves relevant passages from the Chroma collection based on a specific date and query.
+
+    Args:
+        date (str): The date to filter the passages by (in ISO format, e.g., 'YYYY-MM-DD').
+        query (str): The query string to search for relevant passages.
+        collection (chromadb.Collection): The Chroma collection to search within.
+        n_results (int): The maximum number of results to return.  It's effectively ignored here since Chroma's
+                         filtering mechanism can return more or less than `n_results`.  You may want to use it
+                         to limit the *overall* number of returned documents if Chroma's internal filtering is too broad.
+
+    Returns:
+        List[str]: A list of relevant passages (strings) that match the date and query.  Returns an empty list
+                     if no matching passages are found.
+    """
+    print(f"Getting date specific data as date is given {date}")
+
+    results = collection.query(
         query_texts=[query],
-        where={"timestamp": int(date.timestamp())}
+        n_results=n_results,  # Keep n_results for a general limit on results. Important for performance
+        where={"date": str(date)}
     )
 
-    # passage = collection.query(query_texts=[query], n_results=n_results)['documents'][0]
-    return passage
+    print(f"Chroma query results: {results}")  # Debug: Inspect the full query result
+
+    if results and 'documents' in results and results['documents']:
+        passages = results['documents'][0]  # Access the *first* list of documents. Corrected line!
+        print(f"Found passages for date {date}: {passages}")
+        return passages
+    else:
+        print(f"No passages found for date {date}.")
+        return [] # Return an empty list if no matching documents are found.  This is crucial.
 
 
 def load_chroma_collection(path, name):
@@ -111,10 +143,11 @@ def create_chroma_db(documents: List, path: str, name: str):
     chroma_client = chromadb.PersistentClient(path=path)
     collection = chroma_client.get_or_create_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
     # collection = chroma_client.create_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
-    timestamp = int(datetime.now().timestamp())  # Convert to Unix timestamp for efficient storage
+    today_date = datetime.datetime.now().date().isoformat()   # Convert to Unix timestamp for efficient storage
+    timestamp = int(datetime.datetime.now().timestamp())
     collection.add(
         documents=documents,
-        metadatas=[{"timestamp": timestamp, "user_id": ""}],  # add user later
+        metadatas=[{"date": str(today_date), "user_id": ""}],  # add user later
         ids=[str(timestamp)]  # Using timestamp as ID for simplicity
     )
 
@@ -176,9 +209,52 @@ def load_and_create_embeddings():
 
 
 if __name__ == "__main__":
-    update_embeddings_new_text("My son's name is Vidyut Srivastava")
-    update_embeddings_new_text("My name is Prashantak Srivastava")
-    update_embeddings_new_text("My daughters's name is Shyla Srivastava")
+    # First, clear out the ChromaDB directory (for testing purposes)
+    # import shutil
+    # if os.path.exists("./storage"):
+    #     shutil.rmtree("./storage")
 
-    # load_and_create_embeddings()
-    generate_answer_user()
+    # Add some test data for today and yesterday
+    today = datetime.date.today().isoformat()
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    timestamp = int(datetime.datetime.now().timestamp())
+    #create chroma db
+    chroma_client = chromadb.PersistentClient(path="./storage")
+    collection = chroma_client.get_or_create_collection(name="daily_dairy", embedding_function=ef.GeminiEmbeddingFunction())
+
+    # collection.add(
+    #     documents=["My name is Prashantak Srivastava"],
+    #     metadatas=[{"date": "", "user_id": ""}],
+    #     ids=[str(timestamp + 1)]
+    # )
+    # collection.add(
+    #     documents=["My daughters name is Shyla Srivastava"],
+    #     metadatas=[{"date": "", "user_id": ""}],
+    #     ids=[str(timestamp + 2)]
+    # )
+    #
+    # collection.add(
+    #     documents=["Shyla's birth day is November 16th"],
+    #     metadatas=[{"date": "", "user_id": ""}],
+    #     ids=[str(timestamp + 3)]
+    # )
+    #
+    # collection.add(
+    #     documents=["I walked 12000 steps"],
+    #     metadatas=[{"date": "03/11/2025", "user_id": ""}],
+    #     ids=[str(timestamp + 4)]
+    # )
+    # collection.add(
+    #     documents=["I had great cricket match and we won both the games"],
+    #     metadatas=[{"date": yesterday, "user_id": ""}],
+    #     ids=[str(timestamp + 5)]
+    # )
+
+
+    # Test querying for yesterday's data
+    # answer = generate_answer_user("yesterday", query="all notes")
+    # print(f"Answer for yesterday: {answer}")
+
+    # Test querying for today's data
+    answer = generate_answer_user("", query="My daughter's name")
+    print(f"Answer for today: {answer}")

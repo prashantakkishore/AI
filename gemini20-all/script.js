@@ -18,6 +18,7 @@
         let mediaRecorder = null;
         let processor = null;
         let pcmData = [];
+        let accumulatedPcmData = [];
         let interval = null;
         let initialized = false;
         let audioInputContext;
@@ -93,6 +94,25 @@
             webSocket.send(JSON.stringify(setup_client_message));
         }
 
+        function sendAudioToTranscribe(b64PCM) {
+                    if (webSocket == null) {
+                        console.log("websocket not initialized");
+                        return;
+                    }
+
+                    payload = {
+                        realtime_input: {
+                            media_chunks: [{
+                                    mime_type: "audio/transcribe",
+                                    data: b64PCM,
+                                }
+                            ],
+                        },
+                    };
+
+                    webSocket.send(JSON.stringify(payload));
+                    console.log("sent: ", payload);
+                }
 
         function sendVoiceMessage(b64PCM) {
             if (webSocket == null) {
@@ -149,15 +169,33 @@
             const messageData = JSON.parse(event.data);
             const response = new Response(messageData);
 
-            if (response.text) {
-                displayMessage("GEMINI Text: " + response.text);
-            }
+//            if (response.text) {
+//                displayMessage("GEMINI Text: " + response.text);
+//            }
             if (response.json) {
                 displayChatResponse(response.json);
             }
             if (response.audioData) {
+                accumulatedPcmData.push(messageData.audio);
                 injestAudioChuckToPlay(response.audioData);
             }
+            if (response.endOfTurn) {
+                    if (accumulatedPcmData.length > 0) {
+                      try {
+                        const fullPcmData = accumulatedPcmData.join('');
+
+                        sendAudioToTranscribe(fullPcmData);
+                        accumulatedPcmData = []; // Clear accumulated data
+                      } catch (error) {
+                        console.error("[WebSocket] Transcription error:", error);
+                      }
+                    }
+                  }
+
+                  if (response.transcribeJson) {
+                                  console.log("Transcribed Text " + response.transcribeJson)
+                                  appendToTextArea("AI", response.transcribeJson)
+                              }
         }
 
 
@@ -333,6 +371,40 @@
             addParagraphToDiv("chatLog", message);
         }
 
+        function appendToTextArea(type, text) {
+                    const textarea = document.getElementById('myTextarea');
+                    textarea.addEventListener('input', function() {
+
+                     textarea.scrollTop = textarea.scrollHeight;  // Scroll to the bottom
+
+                    });
+            // 2. Create the div and its content
+              const div = document.createElement('div');
+
+              const spanImage = document.createElement('span');
+              const image = document.createElement('img');
+//              image.src = "img.png";
+              image.src = type == "AI"? "images.jpg": "user.png";
+              image.alt = text; // Accessibility! Use the text as the alt text.  Adjust if a better alt text is known
+              image.height = 35; // Set the image height
+                image.width = 50;
+              spanImage.appendChild(image);
+
+              const spanText = document.createElement('span');
+              spanText.textContent = text;  // Safer than innerHTML for plain text
+
+
+              div.appendChild(spanImage);
+              div.appendChild(spanText);
+
+              // 3. Convert the div to a string representation (HTML)
+              const divHtml = div.outerHTML;
+                                    /// 4. Insert the HTML string into the textarea
+//                                       const currentText = textarea.value;
+//                                       textarea.value = currentText + divHtml;
+textarea.innerHTML = divHtml + textarea.innerHTML
+                }
+
 
         function addParagraphToDiv(divId, text) {
             const newParagraph = document.createElement("p");
@@ -348,6 +420,7 @@
                 this.json = null;
                 this.audioData = null;
                 this.endOfTurn = null;
+                this.transcribeJson = null;
 
                 if (data.text) {
                     this.text = data.text
@@ -359,6 +432,13 @@
                 if (data.audio) {
                     this.audioData = data.audio;
                 }
+
+                if (data.serverContent?.turnComplete) {
+                    this.endOfTurn = true;
+                }
+                 if (data.transcribe_json) {
+                     this.transcribeJson = data.transcribe_json;
+                 }
             }
         }
 
@@ -402,11 +482,9 @@
                 event.preventDefault(); // Prevent default behavior of the enter key
 
                 const inputText = this.value;
-                const textarea = document.getElementById('myTextarea');
-
-                // Append the text to the textarea
-                textarea.innerHTML += "<div class=\"queryTextClass\">Query: " + inputText + "<br>" + "</div>";
+                appendToTextArea("User", inputText)
                 sendTextMessage(this.value)
                 this.value = ''; // Clear the input field
             }
         });
+

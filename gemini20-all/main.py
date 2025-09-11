@@ -1,16 +1,20 @@
 # main.py
 # pip install google-genai==0.3.0
-
+import audioTranscribe as at
 import asyncio
 import base64
 import json
-import re
-import markdown
 import websockets
 from google import genai
 import chromavectordb as cvd
 import Tools as tools
 from ToolHandler import ToolHandler
+import markdown
+import re  # Import the regular expression module
+import pygments
+from pygments.lexers import get_lexer_by_name
+from pygments.formatters import HtmlFormatter
+
 
 # Load API key from environment
 # os.environ['GOOGLE_API_KEY'] = ''
@@ -21,6 +25,28 @@ client = genai.Client(
         'api_version': 'v1alpha',
     }
 )
+
+
+def markdown_to_html(md_text):
+    """Converts Markdown text to HTML, performing basic sanitization and syntax highlighting."""
+    # Extensions for better Markdown support (e.g., tables, fenced code blocks)
+    extensions = ['nl2br', 'fenced_code', 'tables', 'sane_lists', 'codehilite']
+    extension_configs = {
+        'codehilite': {
+            'guess_lang': False,  # Disable language guessing; rely on explicit language tags
+            'linenums': False,     # Disable line numbers (optional)
+            'css_class': 'highlight'  # CSS class for the code block
+        }
+    }
+    html = markdown.markdown(md_text, extensions=extensions, extension_configs=extension_configs, output_format="html5")  # Specify html5 for modern browsers
+
+    # Basic sanitization using regular expressions (VERY LIMITED!)
+    # Remove potentially dangerous attributes (e.g., onclick, onload)
+    html = re.sub(r'<(.*?) (.*?)on[a-z]+=[\'"].*?[\'"](.*?)>', r'<\1 \3>', html, flags=re.IGNORECASE)
+    # Remove javascript: URLs
+    html = re.sub(r'href=[\'"]javascript:.*?[\'"]', 'href="#"', html, flags=re.IGNORECASE)
+
+    return html
 
 
 async def gemini_session_handler(client_websocket: websockets.ClientConnection):
@@ -55,16 +81,20 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                     if "data" in chunk:
                                         if chunk["mime_type"] == "audio/pcm":
                                             await session.send(input={"mime_type": "audio/pcm", "data": chunk["data"]})
-
+                                            # at.transcribe_vosk(chunk["data"])
+                                        elif chunk["mime_type"] == "audio/transcribe":
+                                            transcribed_text = at.call_gemini_transcribe(chunk["data"])
+                                            await client_websocket.send(json.dumps({"transcribe_json": transcribed_text}))
                                         elif chunk["mime_type"] == "image/jpeg":
                                             await session.send(input={"mime_type": "image/jpeg", "data": chunk["data"]})
 
                                         elif chunk["mime_type"] == "application/json":
 
                                             response = chat.send_message_stream(chunk["data"])
-                                            cvd.update_embeddings_new_text(chunk["data"])
+                                            # cvd.update_embeddings_new_text(chunk["data"])
                                             for chat_response_chunk in response:
-                                                await client_websocket.send(json.dumps({"json": chat_response_chunk.text}))
+                                                html_text = markdown_to_html(chat_response_chunk.text)
+                                                await client_websocket.send(json.dumps({"json": html_text}))
 
                         except Exception as client_closed:
                             print(f"Error sending to Gemini send_to_gemini: {client_closed}")
@@ -108,8 +138,9 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                     for part in model_turn.parts:
                                         # print(f"part: {part}")
                                         if hasattr(part, 'text') and part.text is not None:
-                                            # print(f"text: {part.text}")
-                                            await client_websocket.send(json.dumps({"text": part.text}))
+                                            # Convert Markdown to HTML and sanitize
+                                            html_text = markdown_to_html(part.text)
+                                            await client_websocket.send(json.dumps({"text": html_text}))
                                         elif hasattr(part, 'inline_data') and part.inline_data is not None:
                                             # if first_response:
                                             # print("audio mime_type:", part.inline_data.mime_type)
