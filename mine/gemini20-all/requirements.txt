@@ -4,6 +4,6 @@ SpeechRecognition
 websockets
 markdown
 pygments
-chromadb
 pypdf
 python-dotenv
+chromadb

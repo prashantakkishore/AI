@@ -42,25 +42,22 @@ def markdown_to_html(md_text):
 
 
 async def gemini_session_handler(client_websocket: websockets.ClientConnection):
-    """Handles the interaction with Gemini API within a websocket session.
-
-    Args:
-        client_websocket: The websocket connection to the client.
-    """
+    """Handles the interaction with Gemini API within a websocket session."""
     try:
         config_message = await client_websocket.recv()
         config_data = json.loads(config_message)
         config = config_data.get("setup", {})
 
-        available_tools = tools  # Access the tools module
+        available_tools = tools
         config["tools"] = [tools.write_to_diary_tool, tools.find_in_diary_tool, tools.exchange_rate_tool]
 
         tools_handler = ToolHandler(available_tools, client_websocket)
 
-
+        # Connect to the Live API
         async with client.aio.live.connect(model=MODEL, config=config) as session:
             print("Connected to Gemini API")
-            chat = client.chats.create(model=MODEL)
+            
+            # REMOVED: chat = client.chats.create(model=MODEL) <-- This was causing the 404 conflict
 
             async def send_to_gemini():
                 """Sends messages from the client websocket to the Gemini API."""
@@ -72,24 +69,26 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                 for chunk in data["realtime_input"]["media_chunks"]:
                                     if "data" in chunk:
                                         if chunk["mime_type"] == "audio/pcm":
+                                            # Send Audio to Live API
                                             await session.send(input={"mime_type": "audio/pcm", "data": chunk["data"]})
-                                            # at.transcribe_vosk(chunk["data"])
+                                        
                                         elif chunk["mime_type"] == "audio/transcribe":
+                                            # Handle separate transcription logic
                                             transcribed_text = at.call_gemini_transcribe(chunk["data"])
                                             await client_websocket.send(json.dumps({"transcribe_json": transcribed_text}))
+                                        
                                         elif chunk["mime_type"] == "image/jpeg":
+                                            # Send Image to Live API
                                             await session.send(input={"mime_type": "image/jpeg", "data": chunk["data"]})
 
                                         elif chunk["mime_type"] == "application/json":
-
-                                            response = chat.send_message_stream(chunk["data"])
-                                            # cvd.update_embeddings_new_text(chunk["data"])
-                                            for chat_response_chunk in response:
-                                                html_text = markdown_to_html(chat_response_chunk.text)
-                                                await client_websocket.send(json.dumps({"json": html_text}))
+                                            # FIX: Send TEXT to the existing Live API session
+                                            # We do not use chat.send_message_stream here.
+                                            # We send it to the session and wait for the response in 'receive_from_gemini'
+                                            await session.send(input=chunk["data"], end_of_turn=True)
 
                         except Exception as client_closed:
-                            print(f"Error sending to Gemini send_to_gemini: {client_closed}")
+                            print(f"Error processing message in send_to_gemini: {client_closed}")
                     print("Client connection closed (send)")
                 except Exception as client_closed:
                     print(f"Error sending to Gemini send_to_gemini connection: {client_closed}")
@@ -97,53 +96,40 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                     print("send_to_gemini closed")
 
             async def receive_from_gemini():
-                """Receives responses from the Gemini API and forwards them to the client, looping until turn is
-                complete."""
+                """Receives responses from the Gemini API and forwards them to the client."""
                 try:
-                    # Signal setup complete once, outside the main receive loop
-                    await client_websocket.send(
-                        json.dumps({"setupComplete": "true"}))
+                    await client_websocket.send(json.dumps({"setupComplete": "true"}))
 
                     while True:
                         try:
-                            print("receiving from gemini...") # Updated print for clarity
-
-                            # The session.receive() will yield responses as they arrive
+                            print("receiving from gemini...")
                             async for response in session.receive():
-                                print("response from gemini.....") # This line will now print when a response is received
-                                # first_response = True
-                                # print(f"response: {response}")
+                                print("response from gemini.....")
+                                
                                 if response.server_content is None:
                                     if response.tool_call is not None:
-                                        # handle the tool call
                                         print(f"Tool call received: {response.tool_call}")
-
                                         function_calls = response.tool_call.function_calls
+                                        
+                                        # Execute the tool
                                         function_responses = await tools_handler.process_tool_calls(function_calls)
-
-                                        # Send function response back to Gemini
-                                        print(f"function_responses: {function_responses}")
+                                        
+                                        # Send tool result back to Gemini Live Session
+                                        print(f"Sending function_responses back: {function_responses}")
                                         await session.send(input=function_responses)
                                         continue
-
-                                    # print(f'Unhandled server message! - {response}')
-                                    # continue
 
                                 model_turn = response.server_content.model_turn
                                 if model_turn:
                                     for part in model_turn.parts:
-                                        # print(f"part: {part}")
+                                        # Handle Text Response (Model speaking)
                                         if hasattr(part, 'text') and part.text is not None:
-                                            # Convert Markdown to HTML and sanitize
-                                            # Send function response back to Gemini
-                                            print(f"function_responses: {function_responses}")
-                                            # FIX: Use send_tool_response for function responses
-                                            await session.send_tool_response(tool_response=function_responses)
-                                            continue
+                                            # FIX: Send the text to the FRONTEND, not back to Gemini
+                                            html_text = markdown_to_html(part.text)
+                                            await client_websocket.send(json.dumps({"json": html_text}))
+                                        
+                                        # Handle Audio Response (Model speaking)
                                         elif hasattr(part, 'inline_data') and part.inline_data is not None:
-                                            # if first_response:
-                                            # print("audio mime_type:", part.inline_data.mime_type)
-                                            # first_response = False
                                             base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')
                                             await client_websocket.send(json.dumps({
                                                 "audio": base64_audio,
@@ -156,10 +142,10 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                     print('\n<Turn complete>')
                         except websockets.exceptions.ConnectionClosedOK:
                             print("Client connection closed normally (receive)")
-                            break  # Exit the loop if the connection is closed
+                            break
                         except Exception as e:
-                            print(f"Error receiving from Gemini: {e}")
-                            break  # exit the lo
+                            print(f"Error in receive loop inner: {e}")
+                            break
 
                 except Exception as e:
                     print(f"Error receiving from Gemini: {e}")
@@ -171,7 +157,6 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
             # Launch receive loop as a background task
             receive_task = asyncio.create_task(receive_from_gemini())
             await asyncio.gather(send_task, receive_task)
-
 
     except Exception as e:
         print(f"Error in Gemini session: {e}")
