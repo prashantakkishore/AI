@@ -1,5 +1,5 @@
-import google.generativeai as genai
 from chromadb import Documents, EmbeddingFunction, Embeddings
+from client_config import client
 import os
 
 
@@ -18,13 +18,13 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
     """
 
     def __call__(self, input: Documents) -> Embeddings:
-        gemini_api_key = os.getenv("GOOGLE_API_KEY")
-        if not gemini_api_key:
-            raise ValueError("Gemini API Key not provided. Please provide GOOGLE_API_KEY as an environment variable")
-        genai.configure(api_key=gemini_api_key)
         model = "models/text-embedding-004"
         title = "Custom query"
-        return genai.embed_content(model=model,
-                                   content=input,
-                                   task_type="retrieval_document",
-                                   title=title)["embedding"]
+
+        # Use the client object's models.embed_content method
+        return client.models.embed_content(
+            model=model,
+            content=input,
+            task_type="retrieval_document",
+            title=title
+        )["embedding"]

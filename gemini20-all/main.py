@@ -1,10 +1,12 @@
 # main.py
 # pip install google-genai==0.3.0
+import os
 import audioTranscribe as at
 import asyncio
 import base64
 import json
 import websockets
+from dotenv import load_dotenv
 from google import genai
 import chromavectordb as cvd
 import Tools as tools
@@ -14,17 +16,7 @@ import re  # Import the regular expression module
 import pygments
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
-
-
-# Load API key from environment
-# os.environ['GOOGLE_API_KEY'] = ''
-MODEL = "gemini-2.0-flash-exp"  # use your model ID
-TRANSCRIPTION_MODEL = "gemini-1.5-flash-8b"
-client = genai.Client(
-    http_options={
-        'api_version': 'v1alpha',
-    }
-)
+from client_config import client, MODEL, TRANSCRIPTION_MODEL
 
 
 def markdown_to_html(md_text):
@@ -108,13 +100,17 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                 """Receives responses from the Gemini API and forwards them to the client, looping until turn is
                 complete."""
                 try:
+                    # Signal setup complete once, outside the main receive loop
+                    await client_websocket.send(
+                        json.dumps({"setupComplete": "true"}))
+
                     while True:
                         try:
-                            print("receiving from gemini")
-                            await client_websocket.send(
-                                json.dumps({"setupComplete": "true"}))
+                            print("receiving from gemini...") # Updated print for clarity
 
+                            # The session.receive() will yield responses as they arrive
                             async for response in session.receive():
+                                print("response from gemini.....") # This line will now print when a response is received
                                 # first_response = True
                                 # print(f"response: {response}")
                                 if response.server_content is None:
@@ -139,8 +135,11 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                         # print(f"part: {part}")
                                         if hasattr(part, 'text') and part.text is not None:
                                             # Convert Markdown to HTML and sanitize
-                                            html_text = markdown_to_html(part.text)
-                                            await client_websocket.send(json.dumps({"text": html_text}))
+                                            # Send function response back to Gemini
+                                            print(f"function_responses: {function_responses}")
+                                            # FIX: Use send_tool_response for function responses
+                                            await session.send_tool_response(tool_response=function_responses)
+                                            continue
                                         elif hasattr(part, 'inline_data') and part.inline_data is not None:
                                             # if first_response:
                                             # print("audio mime_type:", part.inline_data.mime_type)

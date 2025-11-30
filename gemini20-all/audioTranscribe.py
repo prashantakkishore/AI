@@ -1,13 +1,9 @@
 import base64
-import os
-import queue
 import struct
-
-import google.generativeai as genai
 import numpy as np
-import speech_recognition as sr
-import whisper
-from vosk import Model, KaldiRecognizer, SetLogLevel
+from client_config import client, TRANSCRIPTION_MODEL
+# import whisper
+# from vosk import Model, KaldiRecognizer, SetLogLevel
 
 
 # def transcribe_whisper(base64_audio, duration=0):
@@ -96,12 +92,10 @@ def process_pem_to_wav(base64_audio):
 
 
 def call_gemini_transcribe(encoded_audio, audio_mime_type="audio/wav"):
-    # Replace with your actual Gemini API key
-    GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
+
     wav_data = process_pem_to_wav(encoded_audio)
-    # Configure Gemini Pro *BEFORE* using it
-    genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-pro-latest')  # or 'gemini-pro' or  'gemini-1.5-flash-latest'
+    # FIX: Use client.models.generate_content directly, passing the model name
+
     contents = [
         {
             "parts": [
@@ -117,7 +111,12 @@ def call_gemini_transcribe(encoded_audio, audio_mime_type="audio/wav"):
         }
     ]
 
-    response = model.generate_content(contents)
+    # Call generate_content directly on client.models, passing the model and contents
+    response = client.models.generate_content(
+        model=TRANSCRIPTION_MODEL,
+        contents=contents
+    )
+
     transcription = response.text
 
     return transcription

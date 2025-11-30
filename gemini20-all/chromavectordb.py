@@ -1,13 +1,13 @@
-import os
+
 import re
 from typing import List
 import chromadb
-import google.generativeai as genai
 from pypdf import PdfReader
 import embeddingfunctions as ef
 from decorators import decorator_time_taken
 import datetime
 import util
+from client_config import client
 
 
 # load_pdf -> split_text -> create_chroma_db -> load_chroma_collection -> get_relevant_passage (user query in same
@@ -38,14 +38,11 @@ def generate_answer(date, collection, query):
 
 
 def generate_answer_gemini(prompt):
-    gemini_api_key = os.getenv("GOOGLE_API_KEY")
-    if not gemini_api_key:
-        raise ValueError("Gemini API Key not provided. Please provide GOOGLE_API_KEY as an environment variable")
-    genai.configure(api_key=gemini_api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash-exp')
-    answer = model.generate_content(prompt)
-    return answer.text
-
+    gemini_ans = client.models.generate_content(
+        model='gemini-2.0-flash-exp',
+        contents=prompt
+    )
+    return gemini_ans.text
 
 def make_rag_prompt(query, relevant_passage):
     escaped = relevant_passage.replace("'", "").replace('"', "").replace("\n", " ")

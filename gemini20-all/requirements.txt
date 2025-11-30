@@ -1,0 +1,9 @@
+google-genai
+numpy
+SpeechRecognition
+websockets
+markdown
+pygments
+chromadb
+pypdf
+python-dotenv
