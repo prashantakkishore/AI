@@ -13,5 +13,7 @@ client = genai.Client()
 
 # MODEL = "gemini-1.5-flash" 
 # TRANSCRIPTION_MODEL = "gemini-1.5-flash"
-MODEL = "gemini-2.0-flash-exp"
-TRANSCRIPTION_MODEL = "gemini-1.5-flash-8b"
+EMBEDDING_MODEL_NAME="models/text-embedding-004"
+MODEL = "gemini-2.5-flash-native-audio-preview-09-2025"
+CHROMA_RAG_MODEL="gemini-2.5-flash"
+TRANSCRIPTION_MODEL = "gemini-2.5-flash"

@@ -3,20 +3,23 @@ import re
 from typing import List
 import chromadb
 from pypdf import PdfReader
-import embeddingfunctions as ef
 from decorators import decorator_time_taken
+from chromadb.utils.embedding_functions import GoogleGenerativeAiEmbeddingFunction
 import datetime
 import util
-from client_config import client
+import os
+from client_config import client, EMBEDDING_MODEL_NAME, CHROMA_RAG_MODEL
 
 
 # load_pdf -> split_text -> create_chroma_db -> load_chroma_collection -> get_relevant_passage (user query in same
 # embeddings) ->  make_rag_prompt -> generate_answer
 
+CHROMA_DB_NAME="./storage"
+CHROMA_COLLECTION_NAME="daily_dairy"
+
 @decorator_time_taken
 def generate_answer_user(date, query="what is my daughter's name"):
-    db = load_chroma_collection(path="./storage",  # replace with path of your persistent directory
-                                name="daily_dairy")  # replace with the collection name
+    db = create_db_and_collection()
     answer = generate_answer(date, db, query=query)
     if answer is None:
         return "Nothing Found"
@@ -38,8 +41,11 @@ def generate_answer(date, collection, query):
 
 
 def generate_answer_gemini(prompt):
+    # Check what models supports what
+    # for m in client.models.list():
+    #     print(f"Model Name: {m.name}, Supported methods: {m.supported_actions}")
     gemini_ans = client.models.generate_content(
-        model='gemini-2.0-flash-exp',
+        model=CHROMA_RAG_MODEL,
         contents=prompt
     )
     return gemini_ans.text
@@ -108,7 +114,8 @@ def get_relevant_passage_timestamp(date, query, collection, n_results):
         return [] # Return an empty list if no matching documents are found.  This is crucial.
 
 
-def load_chroma_collection(path, name):
+def create_db_and_collection(path=CHROMA_DB_NAME,  # replace with path of your persistent directory
+                             name=CHROMA_COLLECTION_NAME):
     """
     Loads an existing Chroma collection from the specified path with the given name.
 
@@ -119,27 +126,16 @@ def load_chroma_collection(path, name):
     Returns:
     - chromadb.Collection: The loaded Chroma Collection.
     """
+    google_ef = GoogleGenerativeAiEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
     chroma_client = chromadb.PersistentClient(path=path)
-    collection = chroma_client.get_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
+    collection = chroma_client.get_or_create_collection(name=name, embedding_function=google_ef)
 
     return collection
 
 
-def create_chroma_db(documents: List, path: str, name: str):
-    """
-    Creates a Chroma database using the provided documents, path, and collection name.
+def add_documents_to_collection(documents: List):
 
-    Parameters:
-    - documents: An iterable of documents to be added to the Chroma database.
-    - path (str): The path where the Chroma database will be stored.
-    - name (str): The name of the collection within the Chroma database.
-
-    Returns:
-    - Tuple[chromadb.Collection, str]: A tuple containing the created Chroma Collection and its name.
-    """
-    chroma_client = chromadb.PersistentClient(path=path)
-    collection = chroma_client.get_or_create_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
-    # collection = chroma_client.create_collection(name=name, embedding_function=ef.GeminiEmbeddingFunction())
+    collection = create_db_and_collection()
     today_date = datetime.datetime.now().date().isoformat()   # Convert to Unix timestamp for efficient storage
     timestamp = int(datetime.datetime.now().timestamp())
     collection.add(
@@ -148,7 +144,7 @@ def create_chroma_db(documents: List, path: str, name: str):
         ids=[str(timestamp)]  # Using timestamp as ID for simplicity
     )
 
-    return collection, name
+    return collection
 
 
 def load_pdf(file_path):
@@ -190,9 +186,7 @@ def split_text(text: str):
 def update_embeddings_new_text(text):
     chunked_text = split_text(text)
     print(chunked_text)
-    create_chroma_db(documents=chunked_text,
-                     path="./storage",
-                     name="daily_dairy")
+    add_documents_to_collection(documents=chunked_text)
 
 
 def load_and_create_embeddings():
@@ -200,58 +194,64 @@ def load_and_create_embeddings():
     pdf_text = load_pdf("./downloads/Srivastava,Prashantak_payslip.pdf")
     chunked_text = split_text(pdf_text)
     print(chunked_text)
-    create_chroma_db(documents=chunked_text,
-                     path="./storage",
-                     name="daily_dairy")
+    add_documents_to_collection(documents=chunked_text)
 
 
 if __name__ == "__main__":
     # First, clear out the ChromaDB directory (for testing purposes)
-    # import shutil
-    # if os.path.exists("./storage"):
-    #     shutil.rmtree("./storage")
-
+    import shutil
+    if os.path.exists("./storage"):
+        shutil.rmtree("./storage")
+    model_name="models/text-embedding-004"
+    google_ef = GoogleGenerativeAiEmbeddingFunction(model_name=model_name)
     # Add some test data for today and yesterday
     today = datetime.date.today().isoformat()
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
     timestamp = int(datetime.datetime.now().timestamp())
     #create chroma db
     chroma_client = chromadb.PersistentClient(path="./storage")
-    collection = chroma_client.get_or_create_collection(name="daily_dairy", embedding_function=ef.GeminiEmbeddingFunction())
+    collection = chroma_client.get_or_create_collection(name="daily_dairy", embedding_function=google_ef)
 
-    # collection.add(
-    #     documents=["My name is Prashantak Srivastava"],
-    #     metadatas=[{"date": "", "user_id": ""}],
-    #     ids=[str(timestamp + 1)]
-    # )
-    # collection.add(
-    #     documents=["My daughters name is Shyla Srivastava"],
-    #     metadatas=[{"date": "", "user_id": ""}],
-    #     ids=[str(timestamp + 2)]
-    # )
-    #
-    # collection.add(
-    #     documents=["Shyla's birth day is November 16th"],
-    #     metadatas=[{"date": "", "user_id": ""}],
-    #     ids=[str(timestamp + 3)]
-    # )
-    #
-    # collection.add(
-    #     documents=["I walked 12000 steps"],
-    #     metadatas=[{"date": "03/11/2025", "user_id": ""}],
-    #     ids=[str(timestamp + 4)]
-    # )
-    # collection.add(
-    #     documents=["I had great cricket match and we won both the games"],
-    #     metadatas=[{"date": yesterday, "user_id": ""}],
-    #     ids=[str(timestamp + 5)]
-    # )
+    collection.add(
+        documents=["My name is Prashantak Srivastava"],
+        metadatas=[{"date": "", "user_id": ""}],
+        ids=[str(timestamp + 1)]
+    )
+    collection.add(
+        documents=["My daughters name is Shyla Srivastava"],
+        metadatas=[{"date": "", "user_id": ""}],
+        ids=[str(timestamp + 2)]
+    )
+    
+    collection.add(
+        documents=["Shyla's birth day is November 16th"],
+        metadatas=[{"date": "", "user_id": ""}],
+        ids=[str(timestamp + 3)]
+    )
+    
+    collection.add(
+        documents=["I walked 12000 steps"],
+        metadatas=[{"date": "03/11/2025", "user_id": ""}],
+        ids=[str(timestamp + 4)]
+    )
+    collection.add(
+        documents=["I had great cricket match and we won both the games"],
+        metadatas=[{"date": yesterday, "user_id": ""}],
+        ids=[str(timestamp + 5)]
+    )
 
 
     # Test querying for yesterday's data
-    # answer = generate_answer_user("yesterday", query="all notes")
-    # print(f"Answer for yesterday: {answer}")
+    answer = generate_answer_user("yesterday", query="all notes")
+    print(f"Answer for yesterday: {answer}")
 
     # Test querying for today's data
-    answer = generate_answer_user("", query="My daughter's name")
-    print(f"Answer for today: {answer}")
+    # 5. Query the collection
+    query = "I am Prashantak , how many steps I walked?"
+    results = collection.query(
+        query_texts=[query],
+        n_results=1
+    )
+
+    print(f"\nQuery: {query}")
+    print(f"Relevant document found: {results['documents']}")

@@ -91,8 +91,8 @@ async def gemini_session_handler(client_websocket: websockets.WebSocketServerPro
     try:
         config_message = await client_websocket.recv()
         config_data = json.loads(config_message)
-        #config = LiveConnectConfig(response_modalities=["AUDIO"])
-        config = config_data.get("setup", {})
+        config = LiveConnectConfig(response_modalities=["AUDIO"])
+        #config = config_data.get("setup", {})
         config["system_instruction"] = """You are a helpful assistant and you MUST always use the query_docs tool to query the document 
         towards any questions. It is mandatory to base your answers on the information from the output of the query_docs tool, 
         and include the context from the query tool in your response to the user's question.

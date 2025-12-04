@@ -56,7 +56,7 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
         # Connect to the Live API
         async with client.aio.live.connect(model=MODEL, config=config) as session:
             print("Connected to Gemini API")
-            
+
             # REMOVED: chat = client.chats.create(model=MODEL) <-- This was causing the 404 conflict
 
             async def send_to_gemini():
@@ -71,12 +71,12 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                         if chunk["mime_type"] == "audio/pcm":
                                             # Send Audio to Live API
                                             await session.send(input={"mime_type": "audio/pcm", "data": chunk["data"]})
-                                        
+
                                         elif chunk["mime_type"] == "audio/transcribe":
                                             # Handle separate transcription logic
                                             transcribed_text = at.call_gemini_transcribe(chunk["data"])
                                             await client_websocket.send(json.dumps({"transcribe_json": transcribed_text}))
-                                        
+
                                         elif chunk["mime_type"] == "image/jpeg":
                                             # Send Image to Live API
                                             await session.send(input={"mime_type": "image/jpeg", "data": chunk["data"]})
@@ -104,16 +104,15 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                         try:
                             print("receiving from gemini...")
                             async for response in session.receive():
-                                print("response from gemini.....")
-                                
+
                                 if response.server_content is None:
                                     if response.tool_call is not None:
                                         print(f"Tool call received: {response.tool_call}")
                                         function_calls = response.tool_call.function_calls
-                                        
+
                                         # Execute the tool
                                         function_responses = await tools_handler.process_tool_calls(function_calls)
-                                        
+
                                         # Send tool result back to Gemini Live Session
                                         print(f"Sending function_responses back: {function_responses}")
                                         await session.send(input=function_responses)
@@ -127,7 +126,7 @@ async def gemini_session_handler(client_websocket: websockets.ClientConnection):
                                             # FIX: Send the text to the FRONTEND, not back to Gemini
                                             html_text = markdown_to_html(part.text)
                                             await client_websocket.send(json.dumps({"json": html_text}))
-                                        
+
                                         # Handle Audio Response (Model speaking)
                                         elif hasattr(part, 'inline_data') and part.inline_data is not None:
                                             base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')

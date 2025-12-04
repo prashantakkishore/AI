@@ -384,7 +384,7 @@
               const spanImage = document.createElement('span');
               const image = document.createElement('img');
 //              image.src = "img.png";
-              image.src = type == "AI"? "images.jpg": "user.png";
+              image.src = type == "AI"? "images/images.jpg": "images/user.png";
               image.alt = text; // Accessibility! Use the text as the alt text.  Adjust if a better alt text is known
               image.height = 35; // Set the image height
                 image.width = 50;
