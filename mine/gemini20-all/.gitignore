@@ -165,7 +165,7 @@ model_cache/
 # Ignore finder files
 .DS_Store
 /.DS_Store
-/storage/
+\storage\
 
 # Ignore Chroma vector database
 vector_db/
