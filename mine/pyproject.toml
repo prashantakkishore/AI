@@ -22,5 +22,9 @@ dependencies = [
     "torch",
     "datasets",
     "transformers[torch]",
-    "huggingface_hub"
+    "huggingface_hub",
+    "flask",
+    "typer",
+    "gradio"
+    
 ]
