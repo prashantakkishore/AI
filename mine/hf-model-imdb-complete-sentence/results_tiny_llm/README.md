@@ -13,6 +13,7 @@ should probably proofread and complete it, then remove this comment. -->
 # IMDB-Complete-Sentence-4M
 
 This model is a fine-tuned version of [](https://huggingface.co/) on an small imdb dataset.
+Check its HF space to try it out [](https://huggingface.co/spaces/prashantak/hf-space-imdb-complete-sentence)
 
 ## Model description
 
