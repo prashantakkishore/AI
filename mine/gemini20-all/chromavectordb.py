@@ -137,11 +137,19 @@ def add_documents_to_collection(documents: List):
 
     collection = create_db_and_collection()
     today_date = datetime.datetime.now().date().isoformat()   # Convert to Unix timestamp for efficient storage
-    timestamp = int(datetime.datetime.now().timestamp())
+    
+    # Generate metadatas and ids with the same length as documents
+    metadatas = []
+    ids = []
+    for i, _ in enumerate(documents):
+        timestamp = int(datetime.datetime.now().timestamp()) + i # Ensure unique timestamp for each document
+        metadatas.append({"date": str(today_date), "user_id": ""})
+        ids.append(str(timestamp))
+
     collection.add(
         documents=documents,
-        metadatas=[{"date": str(today_date), "user_id": ""}],  # add user later
-        ids=[str(timestamp)]  # Using timestamp as ID for simplicity
+        metadatas=metadatas,
+        ids=ids
     )
 
     return collection
@@ -190,8 +198,8 @@ def update_embeddings_new_text(text):
 
 
 def load_and_create_embeddings():
-    # pdf_text = load_pdf("./downloads/prashantak_srivastava_usa.pdf")
-    pdf_text = load_pdf("./downloads/Srivastava,Prashantak_payslip.pdf")
+    pdf_text = load_pdf("C:/Prashantak/prashantak_srivastava_usa.pdf")
+    # pdf_text = load_pdf("./downloads/Srivastava,Prashantak_payslip.pdf")
     chunked_text = split_text(pdf_text)
     print(chunked_text)
     add_documents_to_collection(documents=chunked_text)
@@ -208,7 +216,7 @@ if __name__ == "__main__":
     today = datetime.date.today().isoformat()
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
     timestamp = int(datetime.datetime.now().timestamp())
-    #create chroma db
+    # Create chroma db
     chroma_client = chromadb.PersistentClient(path="./storage")
     collection = chroma_client.get_or_create_collection(name="daily_dairy", embedding_function=google_ef)
 
@@ -222,13 +230,13 @@ if __name__ == "__main__":
         metadatas=[{"date": "", "user_id": ""}],
         ids=[str(timestamp + 2)]
     )
-    
+
     collection.add(
         documents=["Shyla's birth day is November 16th"],
         metadatas=[{"date": "", "user_id": ""}],
         ids=[str(timestamp + 3)]
     )
-    
+
     collection.add(
         documents=["I walked 12000 steps"],
         metadatas=[{"date": "03/11/2025", "user_id": ""}],
@@ -240,14 +248,13 @@ if __name__ == "__main__":
         ids=[str(timestamp + 5)]
     )
 
-
     # Test querying for yesterday's data
     answer = generate_answer_user("yesterday", query="all notes")
     print(f"Answer for yesterday: {answer}")
 
     # Test querying for today's data
     # 5. Query the collection
-    query = "I am Prashantak , how many steps I walked?"
+    query = "what is my name"
     results = collection.query(
         query_texts=[query],
         n_results=1
@@ -255,3 +262,5 @@ if __name__ == "__main__":
 
     print(f"\nQuery: {query}")
     print(f"Relevant document found: {results['documents']}")
+
+    # load_and_create_embeddings()

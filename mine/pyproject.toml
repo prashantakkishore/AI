@@ -19,4 +19,8 @@ dependencies = [
     "pypdf",
     "google",
     "google-generativeai",
+    "torch",
+    "datasets",
+    "transformers[torch]",
+    "huggingface_hub"
 ]

@@ -6,8 +6,8 @@ from dotenv import load_dotenv # Import load_dotenv
 # Load environment variables from the .env file
 load_dotenv()
 
-DB="./storage_testing"
-COLLECTION="gemini_collection"
+DB="./storage"
+COLLECTION="daily_dairy"
 
 # 1. Initialize the embedding function
 # The model name defaults to 'models/embedding-001'
